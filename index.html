@@ -1,57 +1,94 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CB350 Navigator</title>
+    <title>CB350 Nav Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; }
-        button { padding: 15px; font-size: 18px; margin: 10px; border-radius: 10px; border: none; }
+        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; padding: 20px; }
+        button { padding: 20px; width: 100%; font-size: 18px; margin: 10px 0; border-radius: 15px; border: none; cursor: pointer; }
         .connect { background: #007bff; color: white; }
         .go { background: #28a745; color: white; }
+        #status { background: #333; padding: 15px; border-radius: 10px; margin-top: 20px; color: #0f0; font-family: monospace; }
     </style>
 </head>
 <body>
-    <h1>CB350 Dashboard</h1>
+    <h1>CB350 Dash</h1>
+    
     <button class="connect" onclick="connectBLE()">1. CONNECT TO BIKE</button>
-    <br>
-    <input type="text" id="dest" placeholder="Enter Destination (Lat, Lng)" style="padding:10px; width:80%;">
-    <br>
+    <input type="text" id="dest" placeholder="Paste Destination Lng,Lat here" style="padding:15px; width:90%; margin: 10px 0; border-radius: 10px;">
     <button class="go" onclick="startNav()">2. START NAVIGATION</button>
-    <div id="status">Status: Waiting...</div>
+    
+    <div id="status">Status: Not Connected</div>
 
     <script>
         let bikeChar;
+        const statusDiv = document.getElementById('status');
+
+        function log(msg) {
+            statusDiv.innerText = "Status: " + msg;
+            console.log(msg);
+        }
 
         async function connectBLE() {
+            log("Requesting Bluetooth...");
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ name: 'CB350_Nav' }],
                     optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']
                 });
+                log("Connecting to GATT...");
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
                 bikeChar = await service.getCharacteristic('6e400002-b5a3-f393-e0a9-e50e24dcca9e');
-                document.getElementById('status').innerText = "Status: Connected to CB350!";
-            } catch (e) { alert("Error: " + e); }
+                log("Connected! Ready to Nav.");
+            } catch (e) { 
+                log("BLE Error: " + e.message);
+                alert("Connect Error: " + e.message); 
+            }
         }
 
-        async function startNav() {
+        function startNav() {
             const dest = document.getElementById('dest').value;
-            // This is where OSRM magic happens
-            navigator.geolocation.watchPosition(async (pos) => {
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                const url = `https://router.project-osrm.org/route/v1/driving/${lng},${lat};${dest}?steps=true`;
-                
-                const res = await fetch(url);
-                const data = await res.json();
-                const nextStep = data.routes[0].legs[0].steps[0];
-                
-                // Send the instruction (e.g., "left") to the ESP32
-                const encoder = new TextEncoder();
-                await bikeChar.writeValue(encoder.encode(nextStep.maneuver.modifier.toUpperCase()));
-                document.getElementById('status').innerText = "Sent: " + nextStep.maneuver.modifier;
-            });
+            if (!dest) { alert("Please paste coordinates first!"); return; }
+            if (!bikeChar) { alert("Connect to Bike first!"); return; }
+
+            log("Requesting GPS...");
+            
+            // Force a single position check to trigger the iOS Permission Popup
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    log("GPS Locked. Watching movement...");
+                    
+                    navigator.geolocation.watchPosition(async (watchPos) => {
+                        const lat = watchPos.coords.latitude;
+                        const lng = watchPos.coords.longitude;
+                        
+                        // OSRM expects: longitude,latitude
+                        const url = `https://router.project-osrm.org/route/v1/driving/${lng},${lat};${dest}?steps=true`;
+                        
+                        try {
+                            const res = await fetch(url);
+                            const data = await res.json();
+                            
+                            if (data.routes && data.routes.length > 0) {
+                                const nextStep = data.routes[0].legs[0].steps[0];
+                                const instruction = nextStep.maneuver.modifier || "straight";
+                                
+                                log("Instruction: " + instruction);
+                                
+                                // Send to ESP32
+                                const encoder = new TextEncoder();
+                                await bikeChar.writeValue(encoder.encode(instruction.toUpperCase()));
+                            }
+                        } catch (err) { log("Fetch Error: " + err.message); }
+                    }, 
+                    (err) => { log("Watch Error: " + err.message); },
+                    { enableHighAccuracy: true }
+                );
+            }, 
+            (err) => { alert("GPS Permission Denied. Check iPhone Settings."); },
+            { timeout: 10000 }
+            );
         }
     </script>
 </body>
