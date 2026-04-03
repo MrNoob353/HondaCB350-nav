@@ -1,140 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CB350 Navigation Dashboard</title>
+    <title>CB350 Final Link</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; }
-        h1 { color: #ffcc00; font-size: 24px; margin-bottom: 30px; }
-        
-        .btn { 
-            width: 100%; padding: 20px; font-size: 18px; font-weight: bold; 
-            border-radius: 15px; border: none; margin: 10px 0; cursor: pointer;
-            transition: transform 0.1s;
-        }
-        .btn:active { transform: scale(0.98); }
-        
-        .btn-connect { background: #007AFF; color: white; }
-        .btn-start { background: #34C759; color: white; }
-        
-        input { 
-            width: 90%; padding: 15px; background: #222; border: 1px solid #444; 
-            color: #fff; border-radius: 10px; font-size: 16px; margin: 10px 0;
-        }
-        
-        #status-box { 
-            background: #111; border: 1px solid #333; padding: 20px; 
-            border-radius: 15px; margin-top: 30px; min-height: 100px;
-        }
-        .log-msg { font-family: monospace; color: #00FF00; font-size: 14px; margin: 5px 0; }
-        .error-msg { color: #FF3B30; }
+        body { font-family: sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; }
+        .btn { width: 100%; padding: 20px; font-size: 18px; border-radius: 15px; border: none; margin: 10px 0; cursor: pointer; }
+        .btn-blue { background: #007AFF; color: white; }
+        .btn-green { background: #34C759; color: white; }
+        input { width: 90%; padding: 15px; background: #222; border: 1px solid #444; color: #fff; border-radius: 10px; margin: 10px 0; }
+        #status { background: #111; padding: 20px; border-radius: 15px; margin-top: 20px; color: #00FF00; font-family: monospace; }
     </style>
 </head>
 <body>
-
     <h1>CB350 Dash</h1>
-
-    <button class="btn btn-connect" onclick="connectBike()">1. CONNECT TO BIKE</button>
-    
-    <input type="text" id="destInput" placeholder="Paste Coords (e.g. 19.123, 72.456)">
-    
-    <button class="btn btn-start" onclick="startNavigation()">2. START NAVIGATION</button>
-
-    <div id="status-box">
-        <div id="statusText" class="log-msg">Status: Offline</div>
-        <div id="navInfo" class="log-msg" style="color: #ffcc00; font-weight: bold;"></div>
-    </div>
+    <button class="btn btn-blue" onclick="connectBike()">1. CONNECT TO BIKE</button>
+    <input type="text" id="destInput" placeholder="Paste Coords Here">
+    <button class="btn btn-green" onclick="startNavigation()">2. START NAVIGATION</button>
+    <div id="status">Status: Offline</div>
 
     <script>
-        let bikeCharacteristic;
-        const statusEl = document.getElementById('statusText');
-        const navInfoEl = document.getElementById('navInfo');
-
-        function updateStatus(msg, isError = false) {
-            statusEl.innerText = "Status: " + msg;
-            statusEl.className = isError ? "log-msg error-msg" : "log-msg";
-        }
+        let bikeChar;
+        const statusEl = document.getElementById('status');
 
         async function connectBike() {
-            updateStatus("Searching for CB350_Nav...");
+            statusEl.innerText = "Status: Searching...";
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ name: 'CB350_Nav' }],
                     optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']
                 });
-                
-                updateStatus("Pairing...");
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
-                bikeCharacteristic = await service.getCharacteristic('6e400002-b5a3-f393-e0a9-e50e24dcca9e');
+                bikeChar = await service.getCharacteristic('6e400002-b5a3-f393-e0a9-e50e24dcca9e');
                 
-                updateStatus("Connected & Ready!");
-            } catch (error) {
-                updateStatus("Connection Failed: " + error.message, true);
-            }
-        }
-
-        async function sendToBike(text) {
-            if (!bikeCharacteristic) return;
-            try {
+                statusEl.innerText = "Status: Connected!";
+                
+                // --- THE FORCE TEST ---
                 const encoder = new TextEncoder();
-                await bikeCharacteristic.writeValue(encoder.encode(text.toUpperCase()));
+                await bikeChar.writeValue(encoder.encode("LINKED"));
             } catch (e) {
-                console.log("Send Error: " + e.message);
+                statusEl.innerText = "Error: " + e.message;
             }
         }
 
-        function startNavigation() {
-            const rawInput = document.getElementById('destInput').value;
-            if (!rawInput) { alert("Paste destination first!"); return; }
-            if (!bikeCharacteristic) { alert("Connect to Bike first!"); return; }
+        async function startNavigation() {
+            const raw = document.getElementById('destInput').value;
+            if (!raw || !bikeChar) return;
 
-            // 1. Clean and Parse Coords
-            let parts = rawInput.replace(/\s/g, '').split(',');
-            if (parts.length < 2) { updateStatus("Bad Coord Format", true); return; }
+            let parts = raw.replace(/\s/g, '').split(',');
+            let lng = parseFloat(parts[1]); 
+            let lat = parseFloat(parts[0]);
+            if (lat > lng) { [lat, lng] = [lng, lat]; }
 
-            let val1 = parseFloat(parts[0]);
-            let val2 = parseFloat(parts[1]);
-
-            // OSRM Rule: Longitude is usually the bigger number (~73 in India)
-            // Latitude is usually the smaller number (~17-19 in Maharashtra)
-            let destLng = (val1 > val2) ? val1 : val2;
-            let destLat = (val1 > val2) ? val2 : val1;
-
-            updateStatus("Requesting GPS...");
-
-            // 2. Start GPS Watcher
-            navigator.geolocation.watchPosition(async (position) => {
-                const myLat = position.coords.latitude;
-                const myLng = position.coords.longitude;
-                const speed = Math.round((position.coords.speed || 0) * 3.6); // Convert m/s to km/h
-
-                updateStatus(`GPS Active | Speed: ${speed} km/h`);
-
-                // 3. Fetch Route from OSRM
-                const url = `https://router.project-osrm.org/route/v1/driving/${myLng},${myLat};${destLng},${destLat}?steps=true`;
-                
+            navigator.geolocation.watchPosition(async (pos) => {
+                const url = `https://router.project-osrm.org/route/v1/driving/${pos.coords.longitude},${pos.coords.latitude};${lng},${lat}?steps=true`;
                 try {
-                    const response = await fetch(url);
-                    const data = await response.json();
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    const step = data.routes[0].legs[0].steps[0];
+                    const cmd = (step.maneuver.modifier || "straight").toUpperCase();
                     
-                    if (data.routes && data.routes.length > 0) {
-                        const nextStep = data.routes[0].legs[0].steps[0];
-                        const modifier = nextStep.maneuver.modifier || "straight";
-                        const distance = Math.round(nextStep.distance);
-                        
-                        navInfoEl.innerText = `NEXT: ${modifier.toUpperCase()} IN ${distance}M`;
-                        
-                        // Send the instruction to your GC9A01 screen
-                        sendToBike(modifier);
-                    }
-                } catch (err) {
-                    updateStatus("OSRM Fetch Error", true);
-                }
-            }, 
-            (err) => { updateStatus("GPS Error: " + err.message, true); }, 
-            { enableHighAccuracy: true });
+                    statusEl.innerText = "Navigating: " + cmd;
+                    const encoder = new TextEncoder();
+                    await bikeChar.writeValue(encoder.encode(cmd));
+                } catch (err) { statusEl.innerText = "OSRM Error"; }
+            });
         }
     </script>
 </body>
