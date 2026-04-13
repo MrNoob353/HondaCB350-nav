@@ -1,95 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CB350 WiFi Dash</title>
-    <style>
-        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; }
-        h1 { color: #ffcc00; font-size: 24px; }
-        .card { background: #111; border: 1px solid #333; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-        input { width: 90%; padding: 15px; background: #222; border: 1px solid #444; color: #fff; border-radius: 10px; margin: 10px 0; }
-        .btn { width: 100%; padding: 20px; font-size: 18px; font-weight: bold; border-radius: 15px; border: none; background: #34C759; color: white; cursor: pointer; }
-        #status { color: #00FF00; font-family: monospace; margin-top: 15px; }
-        #nav-display { font-size: 32px; font-weight: bold; color: #ffcc00; margin-top: 10px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>CB350 Nav Pro</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; display: flex; flex-direction: column; }
+  #statusBar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #111; border-bottom: 1px solid #222; font-size: 13px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot.red { background: #ff3b30; }
+  .dot.green { background: #30d158; }
+  #setupSection, #destSection { padding: 20px 16px; background: #111; border-bottom: 1px solid #222; }
+  h2 { font-size: 15px; color: #888; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .inputRow { display: flex; gap: 10px; align-items: center; }
+  input[type="text"] { flex: 1; background: #1c1c1e; border: 1px solid #333; border-radius: 10px; color: #fff; padding: 12px 14px; font-size: 16px; outline: none; }
+  button { background: #ffd60a; color: #000; border: none; border-radius: 10px; padding: 12px 18px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  #navSection { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; gap: 16px; }
+  #arrowDisplay { font-size: 100px; filter: drop-shadow(0 0 20px rgba(255,214,10,0.4)); }
+  #distDisplay { font-size: 52px; font-weight: 700; color: #ffd60a; }
+  #instrDisplay { font-size: 18px; color: #aaa; text-align: center; }
+  .hidden { display: none !important; }
+  button.danger { background: #ff3b30; color: #fff; width: 100%; margin-top: 10px; }
+</style>
 </head>
 <body>
 
-    <h1>CB350 WiFi Dash</h1>
+<div id="statusBar">
+  <div><span class="dot red" id="espDot"></span><span id="espStatus">ESP32 Disconnected</span></div>
+  <div><span class="dot red" id="gpsDot"></span><span id="gpsStatus">GPS Off</span></div>
+</div>
 
-    <div class="card">
-        <input type="text" id="destInput" placeholder="Paste Coords from Maps">
-        <button class="btn" onclick="startNavigation()">START NAVIGATION</button>
-        <div id="status">Ready: Connect to CB350_Nav WiFi</div>
-    </div>
+<div id="setupSection">
+  <h2>ESP32 Connection</h2>
+  <div class="inputRow">
+    <input type="text" id="espIp" placeholder="e.g. 192.168.4.1" value="192.168.4.1">
+    <button onclick="pingESP()">Connect</button>
+  </div>
+</div>
 
-    <div class="card">
-        <div>INSTRUCTION:</div>
-        <div id="nav-display">---</div>
-    </div>
+<div id="destSection">
+  <h2>Destination</h2>
+  <div class="inputRow">
+    <input type="text" id="destInput" placeholder="Paste Coords (Lat, Lng)">
+  </div>
+  <button id="routeBtn" style="width:100%; margin-top:10px;" onclick="startNavigation()">Start Navigation</button>
+  <button id="stopBtn" class="danger hidden" onclick="stopNavigation()">Stop</button>
+</div>
 
-    <script>
-        const statusEl = document.getElementById('status');
-        const navDisplayEl = document.getElementById('nav-display');
-        let lastCommand = "";
+<div id="navSection">
+  <div id="arrowDisplay">↑</div>
+  <div id="distDisplay">--</div>
+  <div id="instrDisplay">Ready to ride</div>
+</div>
 
-        // WiFi Send Function
-        async function sendToBike(command) {
-            if (command === lastCommand) return; 
-            
-            // Local IP of the ESP32 Access Point
-            const url = `http://192.168.4.1/nav?cmd=${command}`;
-            
-            try {
-                // 'no-cors' allows us to send data even if the ESP32 doesn't send headers
-                await fetch(url, { mode: 'no-cors', cache: 'no-cache' });
-                lastCommand = command;
-                console.log("Sent: " + command);
-            } catch (e) {
-                statusEl.innerText = "WiFi Lost. Reconnect to CB350_Nav";
-            }
-        }
+<script>
+let espIP = '';
+let navActive = false;
+let watchId = null;
 
-        function startNavigation() {
-            const rawInput = document.getElementById('destInput').value;
-            if (!rawInput) return;
+const TURN_MAP = { 'straight':0, 'left':1, 'right':2, 'uturn':3, 'arrive':4 };
+const ARROW_MAP = { 0: '↑', 1: '↰', 2: '↱', 3: '↩', 4: '★' };
 
-            statusEl.innerText = "GPS Tracking Active...";
+async function pingESP() {
+  espIP = document.getElementById('espIp').value.trim();
+  try {
+    const res = await fetch(`http://${espIP}/ping`, { mode: 'no-cors' });
+    document.getElementById('espDot').className = 'dot green';
+    document.getElementById('espStatus').textContent = 'ESP32 Connected';
+  } catch (e) {
+    document.getElementById('espDot').className = 'dot red';
+  }
+}
 
-            navigator.geolocation.watchPosition(async (position) => {
-                const myLat = position.coords.latitude;
-                const myLng = position.coords.longitude;
+async function sendToESP(turnCode, dist) {
+  if (!espIP) return;
+  fetch(`http://${espIP}/nav`, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: `T:${turnCode},D:${dist}`
+  });
+}
 
-                // Parse input
-                let parts = rawInput.replace(/\s/g, '').split(',');
-                let destLat = parseFloat(parts[0]);
-                let destLng = parseFloat(parts[1]);
+function startNavigation() {
+  const dest = document.getElementById('destInput').value.trim();
+  if (!dest) return;
+  
+  navActive = true;
+  document.getElementById('routeBtn').classList.add('hidden');
+  document.getElementById('stopBtn').classList.remove('hidden');
 
-                // Ensure Lng comes first for OSRM URL
-                if (destLat > destLng) { [destLat, destLng] = [destLng, destLat]; }
+  watchId = navigator.geolocation.watchPosition(async (pos) => {
+    document.getElementById('gpsDot').className = 'dot green';
+    document.getElementById('gpsStatus').textContent = 'GPS Active';
 
-                // Fetch route from OSRM
-                const url = `https://router.project-osrm.org/route/v1/driving/${myLng},${myLat};${destLng},${destLat}?steps=true`;
-                
-                try {
-                    const response = await fetch(url);
-                    const data = await response.json();
-                    
-                    if (data.routes && data.routes.length > 0) {
-                        const step = data.routes[0].legs[0].steps[0];
-                        const instruction = (step.maneuver.modifier || "straight").toUpperCase();
-                        
-                        navDisplayEl.innerText = instruction;
-                        sendToBike(instruction);
-                    }
-                } catch (err) {
-                    statusEl.innerText = "OSRM Routing Error";
-                }
-            }, 
-            (err) => { statusEl.innerText = "GPS Error: Check Bluefy Settings"; }, 
-            { enableHighAccuracy: true });
-        }
-    </script>
+    let parts = dest.replace(/\s/g, '').split(',');
+    let dLat = parseFloat(parts[0]), dLng = parseFloat(parts[1]);
+    if (dLat > dLng) [dLat, dLng] = [dLng, dLat];
+
+    const url = `https://router.project-osrm.org/route/v1/driving/${pos.coords.longitude},${pos.coords.latitude};${dLng},${dLat}?steps=true`;
+    
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      const step = data.routes[0].legs[0].steps[0];
+      const modifier = step.maneuver.modifier || 'straight';
+      const code = TURN_MAP[modifier] || 0;
+      const dist = Math.round(step.distance);
+
+      document.getElementById('arrowDisplay').textContent = ARROW_MAP[code];
+      document.getElementById('distDisplay').textContent = dist + "m";
+      document.getElementById('instrDisplay').textContent = modifier.toUpperCase();
+
+      sendToESP(code, dist);
+    } catch (e) {}
+  }, null, { enableHighAccuracy: true });
+}
+
+function stopNavigation() {
+  navActive = false;
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  document.getElementById('routeBtn').classList.remove('hidden');
+  document.getElementById('stopBtn').classList.add('hidden');
+  sendToESP(0, 0);
+}
+</script>
 </body>
 </html>
