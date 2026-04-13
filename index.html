@@ -5,127 +5,532 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>CB350 Nav Pro</title>
+<title>Beeline Nav</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; display: flex; flex-direction: column; }
-  #statusBar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #111; border-bottom: 1px solid #222; font-size: 13px; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-  .dot.red { background: #ff3b30; }
-  .dot.green { background: #30d158; }
-  #setupSection, #destSection { padding: 20px 16px; background: #111; border-bottom: 1px solid #222; }
-  h2 { font-size: 15px; color: #888; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .inputRow { display: flex; gap: 10px; align-items: center; }
-  input[type="text"] { flex: 1; background: #1c1c1e; border: 1px solid #333; border-radius: 10px; color: #fff; padding: 12px 14px; font-size: 16px; outline: none; }
-  button { background: #ffd60a; color: #000; border: none; border-radius: 10px; padding: 12px 18px; font-size: 15px; font-weight: 700; cursor: pointer; }
-  #navSection { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; gap: 16px; }
-  #arrowDisplay { font-size: 100px; filter: drop-shadow(0 0 20px rgba(255,214,10,0.4)); }
-  #distDisplay { font-size: 52px; font-weight: 700; color: #ffd60a; }
-  #instrDisplay { font-size: 18px; color: #aaa; text-align: center; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0a0a0a;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Status bar ── */
+  #statusBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: #111;
+    border-bottom: 1px solid #222;
+    font-size: 13px;
+  }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .dot.red    { background: #ff3b30; }
+  .dot.green  { background: #30d158; }
+  .dot.yellow { background: #ffd60a; }
+
+  /* ── ESP32 IP input ── */
+  #setupSection {
+    padding: 20px 16px;
+    background: #111;
+    border-bottom: 1px solid #222;
+  }
+  #setupSection h2 {
+    font-size: 15px;
+    color: #888;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .inputRow {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  input[type="text"] {
+    flex: 1;
+    background: #1c1c1e;
+    border: 1px solid #333;
+    border-radius: 10px;
+    color: #fff;
+    padding: 12px 14px;
+    font-size: 16px;
+    outline: none;
+  }
+  input[type="text"]::placeholder { color: #555; }
+  input[type="text"]:focus { border-color: #ffd60a; }
+
+  button {
+    background: #ffd60a;
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:active { opacity: 0.8; }
+  button.secondary {
+    background: #1c1c1e;
+    color: #fff;
+    border: 1px solid #333;
+    font-weight: 500;
+  }
+  button.danger {
+    background: #ff3b30;
+    color: #fff;
+  }
+
+  /* ── Destination input ── */
+  #destSection {
+    padding: 20px 16px;
+    border-bottom: 1px solid #222;
+  }
+  #destSection h2 {
+    font-size: 15px;
+    color: #888;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Navigation display ── */
+  #navSection {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  #arrowDisplay {
+    font-size: 100px;
+    line-height: 1;
+    filter: drop-shadow(0 0 20px rgba(255,214,10,0.4));
+  }
+
+  #distDisplay {
+    font-size: 52px;
+    font-weight: 700;
+    color: #ffd60a;
+    letter-spacing: -1px;
+  }
+
+  #instrDisplay {
+    font-size: 18px;
+    color: #aaa;
+    text-align: center;
+    max-width: 280px;
+    line-height: 1.4;
+  }
+
+  #stepInfo {
+    font-size: 13px;
+    color: #555;
+  }
+
+  /* ── Log ── */
+  #log {
+    background: #111;
+    border-top: 1px solid #222;
+    padding: 10px 16px;
+    font-size: 11px;
+    color: #555;
+    font-family: monospace;
+    max-height: 80px;
+    overflow-y: auto;
+  }
+
+  /* ── Hidden ── */
   .hidden { display: none !important; }
-  button.danger { background: #ff3b30; color: #fff; width: 100%; margin-top: 10px; }
+
+  /* ── Route button ── */
+  #routeBtn {
+    width: 100%;
+    padding: 14px;
+    font-size: 17px;
+  }
+  #stopBtn {
+    width: 100%;
+    padding: 14px;
+    font-size: 17px;
+  }
 </style>
 </head>
 <body>
 
+<!-- Status Bar -->
 <div id="statusBar">
-  <div><span class="dot red" id="espDot"></span><span id="espStatus">ESP32 Disconnected</span></div>
-  <div><span class="dot red" id="gpsDot"></span><span id="gpsStatus">GPS Off</span></div>
-</div>
-
-<div id="setupSection">
-  <h2>ESP32 Connection</h2>
-  <div class="inputRow">
-    <input type="text" id="espIp" placeholder="e.g. 192.168.4.1" value="192.168.4.1">
-    <button onclick="pingESP()">Connect</button>
+  <div>
+    <span class="dot red" id="espDot"></span>
+    <span id="espStatus">ESP32 not connected</span>
+  </div>
+  <div>
+    <span class="dot red" id="gpsDot"></span>
+    <span id="gpsStatus">GPS off</span>
   </div>
 </div>
 
+<!-- ESP32 IP Setup -->
+<div id="setupSection">
+  <h2>ESP32 IP Address</h2>
+  <div class="inputRow">
+    <input type="text" id="espIp" placeholder="e.g. 192.168.4.22" value="">
+    <button onclick="pingESP()">Connect</button>
+  </div>
+  <p style="font-size:12px; color:#555; margin-top:8px;">
+    Check round display on ESP32 for the IP after hotspot connects
+  </p>
+</div>
+
+<!-- Destination -->
 <div id="destSection">
   <h2>Destination</h2>
   <div class="inputRow">
-    <input type="text" id="destInput" placeholder="Paste Coords (Lat, Lng)">
+    <input type="text" id="destInput" placeholder="e.g. Gateway of India, Mumbai">
   </div>
-  <button id="routeBtn" style="width:100%; margin-top:10px;" onclick="startNavigation()">Start Navigation</button>
-  <button id="stopBtn" class="danger hidden" onclick="stopNavigation()">Stop</button>
+  <div style="margin-top:10px; display:flex; gap:10px;">
+    <button id="routeBtn" onclick="startNavigation()">Get Route & Start</button>
+  </div>
+  <button id="stopBtn" class="secondary danger hidden" onclick="stopNavigation()" style="margin-top:10px; width:100%; padding:14px; font-size:17px;">Stop Navigation</button>
 </div>
 
+<!-- Live Nav Display -->
 <div id="navSection">
   <div id="arrowDisplay">↑</div>
   <div id="distDisplay">--</div>
-  <div id="instrDisplay">Ready to ride</div>
+  <div id="instrDisplay">Waiting for route...</div>
+  <div id="stepInfo">Step 0 of 0</div>
 </div>
 
+<!-- Debug Log -->
+<div id="log">Ready. Enter ESP32 IP and destination above.</div>
+
 <script>
-let espIP = '';
-let navActive = false;
-let watchId = null;
+// ============================================================
+//  STATE
+// ============================================================
+let espIP        = '';
+let routeSteps   = [];   // all turn-by-turn steps from OSRM
+let currentStep  = 0;
+let watchId      = null; // GPS watcher
+let sendInterval = null; // sends data to ESP32 every second
+let userLat      = null;
+let userLon      = null;
+let navActive    = false;
+let wakeLock     = null;
 
-const TURN_MAP = { 'straight':0, 'left':1, 'right':2, 'uturn':3, 'arrive':4 };
-const ARROW_MAP = { 0: '↑', 1: '↰', 2: '↱', 3: '↩', 4: '★' };
+// Turn type mapping from OSRM modifier → our T code
+// T:0=straight, T:1=left, T:2=right, T:3=uturn, T:4=arrived
+const TURN_MAP = {
+  'straight':       0,
+  'slight left':    1,
+  'left':           1,
+  'sharp left':     1,
+  'slight right':   2,
+  'right':          2,
+  'sharp right':    2,
+  'uturn':          3,
+  'arrive':         4,
+};
 
+// Arrow emoji for each turn type (shown on phone screen)
+const ARROW_MAP = {
+  0: '↑',
+  1: '↰',
+  2: '↱',
+  3: '↩',
+  4: '★',
+};
+
+
+// ============================================================
+//  LOGGING
+// ============================================================
+function log(msg) {
+  const el = document.getElementById('log');
+  const time = new Date().toLocaleTimeString('en', {hour12:false});
+  el.innerHTML = `[${time}] ${msg}<br>` + el.innerHTML;
+  console.log(msg);
+}
+
+
+// ============================================================
+//  ESP32 CONNECTION
+// ============================================================
 async function pingESP() {
   espIP = document.getElementById('espIp').value.trim();
+  if (!espIP) { log('Enter ESP32 IP first'); return; }
+
+  log(`Pinging ESP32 at ${espIP}...`);
   try {
-    const res = await fetch(`http://${espIP}/ping`, { mode: 'no-cors' });
-    document.getElementById('espDot').className = 'dot green';
-    document.getElementById('espStatus').textContent = 'ESP32 Connected';
+    const res = await fetch(`http://${espIP}/ping`, { signal: AbortSignal.timeout(3000) });
+    const txt = await res.text();
+    if (txt.includes('ESP32-NAV')) {
+      setESPStatus(true);
+      log('ESP32 connected! ✅');
+    } else {
+      setESPStatus(false);
+      log('Unexpected response from ESP32');
+    }
   } catch (e) {
-    document.getElementById('espDot').className = 'dot red';
+    setESPStatus(false);
+    log(`Cannot reach ESP32: ${e.message}`);
   }
 }
 
-async function sendToESP(turnCode, dist) {
-  if (!espIP) return;
-  fetch(`http://${espIP}/nav`, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: `T:${turnCode},D:${dist}`
-  });
+function setESPStatus(ok) {
+  document.getElementById('espDot').className    = `dot ${ok ? 'green' : 'red'}`;
+  document.getElementById('espStatus').textContent = ok ? 'ESP32 connected' : 'ESP32 not connected';
 }
 
-function startNavigation() {
+// Send T:x,D:y to ESP32
+async function sendToESP(turnCode, distMeters) {
+  if (!espIP) return;
+  const body = `T:${turnCode},D:${distMeters}`;
+  try {
+    await fetch(`http://${espIP}/nav`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: body,
+      signal: AbortSignal.timeout(2000)
+    });
+  } catch (e) {
+    // silently fail — don't spam log during riding
+  }
+}
+
+
+// ============================================================
+//  GPS
+// ============================================================
+function startGPS() {
+  if (!navigator.geolocation) {
+    log('Geolocation not supported!');
+    return;
+  }
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      document.getElementById('gpsDot').className     = 'dot green';
+      document.getElementById('gpsStatus').textContent = 'GPS active';
+      if (navActive) updateStep();
+    },
+    (err) => {
+      log(`GPS error: ${err.message}`);
+      document.getElementById('gpsDot').className     = 'dot red';
+      document.getElementById('gpsStatus').textContent = 'GPS error';
+    },
+    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+  );
+  log('GPS started');
+}
+
+function stopGPS() {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  document.getElementById('gpsDot').className     = 'dot red';
+  document.getElementById('gpsStatus').textContent = 'GPS off';
+}
+
+
+// ============================================================
+//  ROUTING — calls OSRM (free, no API key)
+// ============================================================
+async function geocode(placeName) {
+  // Nominatim — free geocoder from OpenStreetMap
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1`;
+  const res  = await fetch(url, { headers: { 'User-Agent': 'BeelineNav/1.0' } });
+  const data = await res.json();
+  if (!data.length) throw new Error(`Place not found: ${placeName}`);
+  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), name: data[0].display_name };
+}
+
+async function fetchRoute(fromLat, fromLon, toLat, toLon) {
+  // OSRM public API — free, no key needed
+  const url = `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?steps=true&overview=false`;
+  const res  = await fetch(url);
+  const data = await res.json();
+
+  if (data.code !== 'Ok') throw new Error('OSRM routing failed');
+
+  // Extract steps from first route, first leg
+  const steps = [];
+  for (const leg of data.routes[0].legs) {
+    for (const step of leg.steps) {
+      const maneuver  = step.maneuver;
+      const modifier  = maneuver.modifier || 'straight';
+      const type      = maneuver.type;
+
+      // Map OSRM type/modifier to our T code
+      let turnCode = 0;
+      if (type === 'arrive') {
+        turnCode = 4;
+      } else {
+        turnCode = TURN_MAP[modifier] ?? 0;
+      }
+
+      steps.push({
+        turnCode:    turnCode,
+        distance:    Math.round(step.distance),   // meters
+        instruction: step.name || '',
+        lat:         maneuver.location[1],
+        lon:         maneuver.location[0],
+      });
+    }
+  }
+  return steps;
+}
+
+
+// ============================================================
+//  NAVIGATION LOGIC
+// ============================================================
+async function startNavigation() {
   const dest = document.getElementById('destInput').value.trim();
-  if (!dest) return;
-  
-  navActive = true;
-  document.getElementById('routeBtn').classList.add('hidden');
-  document.getElementById('stopBtn').classList.remove('hidden');
+  if (!dest) { log('Enter a destination first'); return; }
+  if (!userLat) { log('Waiting for GPS...'); startGPS(); return; }
 
-  watchId = navigator.geolocation.watchPosition(async (pos) => {
-    document.getElementById('gpsDot').className = 'dot green';
-    document.getElementById('gpsStatus').textContent = 'GPS Active';
+  log(`Searching for: ${dest}`);
+  document.getElementById('instrDisplay').textContent = 'Fetching route...';
 
-    let parts = dest.replace(/\s/g, '').split(',');
-    let dLat = parseFloat(parts[0]), dLng = parseFloat(parts[1]);
-    if (dLat > dLng) [dLat, dLng] = [dLng, dLat];
+  try {
+    // 1. Geocode destination
+    const destCoords = await geocode(dest);
+    log(`Destination: ${destCoords.name.substring(0, 40)}...`);
 
-    const url = `https://router.project-osrm.org/route/v1/driving/${pos.coords.longitude},${pos.coords.latitude};${dLng},${dLat}?steps=true`;
-    
+    // 2. Fetch full route from OSRM
+    routeSteps  = await fetchRoute(userLat, userLon, destCoords.lat, destCoords.lon);
+    currentStep = 0;
+    log(`Route fetched! ${routeSteps.length} steps total`);
+
+    // 3. Start nav
+    navActive = true;
+    document.getElementById('routeBtn').classList.add('hidden');
+    document.getElementById('stopBtn').classList.remove('hidden');
+
+    // 4. Keep screen awake
     try {
-      const res = await fetch(url);
-      const data = await res.json();
-      const step = data.routes[0].legs[0].steps[0];
-      const modifier = step.maneuver.modifier || 'straight';
-      const code = TURN_MAP[modifier] || 0;
-      const dist = Math.round(step.distance);
+      wakeLock = await navigator.wakeLock.request('screen');
+      log('Screen wake lock acquired');
+    } catch (e) {
+      log('Wake lock not available (keep screen on manually)');
+    }
 
-      document.getElementById('arrowDisplay').textContent = ARROW_MAP[code];
-      document.getElementById('distDisplay').textContent = dist + "m";
-      document.getElementById('instrDisplay').textContent = modifier.toUpperCase();
+    // 5. Update display immediately
+    updateDisplay();
 
-      sendToESP(code, dist);
-    } catch (e) {}
-  }, null, { enableHighAccuracy: true });
+    // 6. Send to ESP32 every 1 second
+    sendInterval = setInterval(() => {
+      if (routeSteps.length && currentStep < routeSteps.length) {
+        const step = routeSteps[currentStep];
+        sendToESP(step.turnCode, step.distance);
+      }
+    }, 1000);
+
+    log('Navigation started! ✅');
+
+  } catch (e) {
+    log(`Error: ${e.message}`);
+    document.getElementById('instrDisplay').textContent = `Error: ${e.message}`;
+  }
 }
 
 function stopNavigation() {
   navActive = false;
-  if (watchId) navigator.geolocation.clearWatch(watchId);
+  if (sendInterval) { clearInterval(sendInterval); sendInterval = null; }
+  if (wakeLock)     { wakeLock.release(); wakeLock = null; }
+  stopGPS();
+
   document.getElementById('routeBtn').classList.remove('hidden');
   document.getElementById('stopBtn').classList.add('hidden');
-  sendToESP(0, 0);
+  document.getElementById('arrowDisplay').textContent  = '↑';
+  document.getElementById('distDisplay').textContent   = '--';
+  document.getElementById('instrDisplay').textContent  = 'Navigation stopped';
+  document.getElementById('stepInfo').textContent      = 'Step 0 of 0';
+
+  sendToESP(0, 0);  // clear ESP32 display
+  log('Navigation stopped');
 }
+
+// Called every GPS update — checks if we've passed the current waypoint
+function updateStep() {
+  if (!navActive || !routeSteps.length) return;
+  if (currentStep >= routeSteps.length) return;
+
+  const step = routeSteps[currentStep];
+
+  // Distance from current GPS to next waypoint
+  const dist = haversine(userLat, userLon, step.lat, step.lon);
+
+  // Update the step's distance with live distance to waypoint
+  routeSteps[currentStep].distance = Math.round(dist);
+
+  // If within 30 metres of waypoint → advance to next step
+  if (dist < 30 && currentStep < routeSteps.length - 1) {
+    currentStep++;
+    log(`Advanced to step ${currentStep + 1} of ${routeSteps.length}`);
+  }
+
+  updateDisplay();
+}
+
+function updateDisplay() {
+  if (!routeSteps.length) return;
+  const step = routeSteps[currentStep];
+
+  document.getElementById('arrowDisplay').textContent = ARROW_MAP[step.turnCode] || '↑';
+
+  const dist = step.distance;
+  if (dist >= 1000) {
+    document.getElementById('distDisplay').textContent = (dist / 1000).toFixed(1) + ' km';
+  } else {
+    document.getElementById('distDisplay').textContent = dist + ' m';
+  }
+
+  document.getElementById('instrDisplay').textContent = step.instruction || turnLabel(step.turnCode);
+  document.getElementById('stepInfo').textContent     = `Step ${currentStep + 1} of ${routeSteps.length}`;
+}
+
+function turnLabel(code) {
+  return ['Go straight','Turn left','Turn right','U-turn','You arrived!'][code] || 'Continue';
+}
+
+// Distance between two GPS coords in metres (Haversine formula)
+function haversine(lat1, lon1, lat2, lon2) {
+  const R    = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a    = Math.sin(dLat/2) * Math.sin(dLat/2) +
+               Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+               Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+
+// ============================================================
+//  AUTO-START GPS on page load
+// ============================================================
+window.addEventListener('load', () => {
+  startGPS();
+  log('App loaded. GPS starting...');
+});
 </script>
 </body>
 </html>
