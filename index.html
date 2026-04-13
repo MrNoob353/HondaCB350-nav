@@ -5,531 +5,397 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Beeline Nav</title>
+<title>CB350 Nav</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, sans-serif;
+  background: #0a0a0a;
+  color: #fff;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0a0a0a;
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+/* Status bar */
+#status {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #111;
+  border-bottom: 1px solid #222;
+  font-size: 13px;
+}
+.dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+  background: #ff3b30;
+}
+.dot.on { background: #30d158; }
 
-  /* ── Status bar ── */
-  #statusBar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    background: #111;
-    border-bottom: 1px solid #222;
-    font-size: 13px;
-  }
-  .dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 6px;
-  }
-  .dot.red    { background: #ff3b30; }
-  .dot.green  { background: #30d158; }
-  .dot.yellow { background: #ffd60a; }
+/* IP input */
+#setup {
+  padding: 16px;
+  background: #111;
+  border-bottom: 1px solid #222;
+}
+#setup label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 8px; }
+#iprow { display: flex; gap: 8px; }
+#ipInput {
+  flex: 1;
+  background: #1c1c1e;
+  border: 1px solid #333;
+  border-radius: 10px;
+  color: #fff;
+  padding: 11px 13px;
+  font-size: 16px;
+  outline: none;
+}
+#ipInput:focus { border-color: #ffd60a; }
 
-  /* ── ESP32 IP input ── */
-  #setupSection {
-    padding: 20px 16px;
-    background: #111;
-    border-bottom: 1px solid #222;
-  }
-  #setupSection h2 {
-    font-size: 15px;
-    color: #888;
-    margin-bottom: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .inputRow {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-  input[type="text"] {
-    flex: 1;
-    background: #1c1c1e;
-    border: 1px solid #333;
-    border-radius: 10px;
-    color: #fff;
-    padding: 12px 14px;
-    font-size: 16px;
-    outline: none;
-  }
-  input[type="text"]::placeholder { color: #555; }
-  input[type="text"]:focus { border-color: #ffd60a; }
+/* Destination */
+#dest {
+  padding: 16px;
+  border-bottom: 1px solid #222;
+}
+#dest label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 8px; }
+#destInput {
+  width: 100%;
+  background: #1c1c1e;
+  border: 1px solid #333;
+  border-radius: 10px;
+  color: #fff;
+  padding: 11px 13px;
+  font-size: 16px;
+  outline: none;
+  margin-bottom: 10px;
+}
+#destInput:focus { border-color: #ffd60a; }
 
-  button {
-    background: #ffd60a;
-    color: #000;
-    border: none;
-    border-radius: 10px;
-    padding: 12px 18px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  button:active { opacity: 0.8; }
-  button.secondary {
-    background: #1c1c1e;
-    color: #fff;
-    border: 1px solid #333;
-    font-weight: 500;
-  }
-  button.danger {
-    background: #ff3b30;
-    color: #fff;
-  }
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 13px;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn-yellow { background: #ffd60a; color: #000; }
+.btn-red    { background: #ff3b30; color: #fff; margin-top: 8px; }
+.btn:active { opacity: .8; }
+.hidden { display: none !important; }
 
-  /* ── Destination input ── */
-  #destSection {
-    padding: 20px 16px;
-    border-bottom: 1px solid #222;
-  }
-  #destSection h2 {
-    font-size: 15px;
-    color: #888;
-    margin-bottom: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
+/* Nav display */
+#nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+#arrow {
+  font-size: 110px;
+  line-height: 1;
+  filter: drop-shadow(0 0 24px rgba(255,214,10,.5));
+}
+#dist {
+  font-size: 54px;
+  font-weight: 700;
+  color: #ffd60a;
+  letter-spacing: -1px;
+}
+#instr {
+  font-size: 17px;
+  color: #999;
+  text-align: center;
+  max-width: 260px;
+}
+#stepcount { font-size: 12px; color: #444; }
 
-  /* ── Navigation display ── */
-  #navSection {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    gap: 16px;
-  }
-
-  #arrowDisplay {
-    font-size: 100px;
-    line-height: 1;
-    filter: drop-shadow(0 0 20px rgba(255,214,10,0.4));
-  }
-
-  #distDisplay {
-    font-size: 52px;
-    font-weight: 700;
-    color: #ffd60a;
-    letter-spacing: -1px;
-  }
-
-  #instrDisplay {
-    font-size: 18px;
-    color: #aaa;
-    text-align: center;
-    max-width: 280px;
-    line-height: 1.4;
-  }
-
-  #stepInfo {
-    font-size: 13px;
-    color: #555;
-  }
-
-  /* ── Log ── */
-  #log {
-    background: #111;
-    border-top: 1px solid #222;
-    padding: 10px 16px;
-    font-size: 11px;
-    color: #555;
-    font-family: monospace;
-    max-height: 80px;
-    overflow-y: auto;
-  }
-
-  /* ── Hidden ── */
-  .hidden { display: none !important; }
-
-  /* ── Route button ── */
-  #routeBtn {
-    width: 100%;
-    padding: 14px;
-    font-size: 17px;
-  }
-  #stopBtn {
-    width: 100%;
-    padding: 14px;
-    font-size: 17px;
-  }
+/* Log */
+#log {
+  background: #0f0f0f;
+  border-top: 1px solid #1a1a1a;
+  padding: 8px 14px;
+  font-size: 11px;
+  color: #555;
+  font-family: monospace;
+  max-height: 72px;
+  overflow-y: auto;
+}
 </style>
 </head>
 <body>
 
-<!-- Status Bar -->
-<div id="statusBar">
-  <div>
-    <span class="dot red" id="espDot"></span>
-    <span id="espStatus">ESP32 not connected</span>
-  </div>
-  <div>
-    <span class="dot red" id="gpsDot"></span>
-    <span id="gpsStatus">GPS off</span>
-  </div>
+<!-- Status -->
+<div id="status">
+  <span><span class="dot" id="eDot"></span><span id="eTxt">ESP32 not connected</span></span>
+  <span><span class="dot" id="gDot"></span><span id="gTxt">GPS off</span></span>
 </div>
 
-<!-- ESP32 IP Setup -->
-<div id="setupSection">
-  <h2>ESP32 IP Address</h2>
-  <div class="inputRow">
-    <input type="text" id="espIp" placeholder="e.g. 192.168.4.22" value="">
-    <button onclick="pingESP()">Connect</button>
+<!-- ESP32 IP -->
+<div id="setup">
+  <label>ESP32 IP Address</label>
+  <div id="iprow">
+    <input id="ipInput" type="text" placeholder="e.g. 172.20.10.2" autocomplete="off">
+    <button class="btn btn-yellow" style="width:auto;padding:11px 16px" onclick="connectESP()">Connect</button>
   </div>
-  <p style="font-size:12px; color:#555; margin-top:8px;">
-    Check round display on ESP32 for the IP after hotspot connects
-  </p>
 </div>
 
 <!-- Destination -->
-<div id="destSection">
-  <h2>Destination</h2>
-  <div class="inputRow">
-    <input type="text" id="destInput" placeholder="e.g. Gateway of India, Mumbai">
-  </div>
-  <div style="margin-top:10px; display:flex; gap:10px;">
-    <button id="routeBtn" onclick="startNavigation()">Get Route & Start</button>
-  </div>
-  <button id="stopBtn" class="secondary danger hidden" onclick="stopNavigation()" style="margin-top:10px; width:100%; padding:14px; font-size:17px;">Stop Navigation</button>
+<div id="dest">
+  <label>Destination</label>
+  <input id="destInput" type="text" placeholder="e.g. Gateway of India, Mumbai">
+  <button class="btn btn-yellow" id="startBtn" onclick="startNav()">Get Route &amp; Start</button>
+  <button class="btn btn-red hidden" id="stopBtn" onclick="stopNav()">Stop Navigation</button>
 </div>
 
-<!-- Live Nav Display -->
-<div id="navSection">
-  <div id="arrowDisplay">↑</div>
-  <div id="distDisplay">--</div>
-  <div id="instrDisplay">Waiting for route...</div>
-  <div id="stepInfo">Step 0 of 0</div>
+<!-- Navigation display -->
+<div id="nav">
+  <div id="arrow">↑</div>
+  <div id="dist">--</div>
+  <div id="instr">Waiting for route...</div>
+  <div id="stepcount">Step 0 of 0</div>
 </div>
 
-<!-- Debug Log -->
-<div id="log">Ready. Enter ESP32 IP and destination above.</div>
+<!-- Log -->
+<div id="log">Ready.</div>
 
 <script>
-// ============================================================
-//  STATE
-// ============================================================
-let espIP        = '';
-let routeSteps   = [];   // all turn-by-turn steps from OSRM
-let currentStep  = 0;
-let watchId      = null; // GPS watcher
-let sendInterval = null; // sends data to ESP32 every second
-let userLat      = null;
-let userLon      = null;
-let navActive    = false;
-let wakeLock     = null;
+// ── State ──────────────────────────────────────────────────
+let espIP       = '';
+let espOK       = false;
+let gpsWatchId  = null;
+let sendTimer   = null;
+let wakeLock    = null;
+let userLat     = null;
+let userLon     = null;
+let navActive   = false;
+let steps       = [];
+let stepIdx     = 0;
 
-// Turn type mapping from OSRM modifier → our T code
-// T:0=straight, T:1=left, T:2=right, T:3=uturn, T:4=arrived
-const TURN_MAP = {
-  'straight':       0,
-  'slight left':    1,
-  'left':           1,
-  'sharp left':     1,
-  'slight right':   2,
-  'right':          2,
-  'sharp right':    2,
-  'uturn':          3,
-  'arrive':         4,
+// OSRM modifier → turn code (0=straight,1=left,2=right,3=uturn,4=arrived)
+const TURN = {
+  'straight':0,'slight left':1,'left':1,'sharp left':1,
+  'slight right':2,'right':2,'sharp right':2,
+  'uturn':3,'arrive':4
 };
+const ARROWS = { 0:'↑', 1:'↰', 2:'↱', 3:'↩', 4:'★' };
 
-// Arrow emoji for each turn type (shown on phone screen)
-const ARROW_MAP = {
-  0: '↑',
-  1: '↰',
-  2: '↱',
-  3: '↩',
-  4: '★',
-};
-
-
-// ============================================================
-//  LOGGING
-// ============================================================
-function log(msg) {
+// ── Logging ────────────────────────────────────────────────
+function lg(msg) {
   const el = document.getElementById('log');
-  const time = new Date().toLocaleTimeString('en', {hour12:false});
-  el.innerHTML = `[${time}] ${msg}<br>` + el.innerHTML;
-  console.log(msg);
+  const t  = new Date().toLocaleTimeString('en', { hour12: false });
+  el.innerHTML = `[${t}] ${msg}<br>` + el.innerHTML;
 }
 
-
-// ============================================================
-//  ESP32 CONNECTION
-// ============================================================
-async function pingESP() {
-  espIP = document.getElementById('espIp').value.trim();
-  if (!espIP) { log('Enter ESP32 IP first'); return; }
-
-  log(`Pinging ESP32 at ${espIP}...`);
+// ── ESP32 connect ──────────────────────────────────────────
+async function connectESP() {
+  espIP = document.getElementById('ipInput').value.trim();
+  if (!espIP) { lg('Enter IP first'); return; }
+  lg(`Pinging http://${espIP}/ping ...`);
   try {
-    const res = await fetch(`http://${espIP}/ping`, { signal: AbortSignal.timeout(3000) });
-    const txt = await res.text();
-    if (txt.includes('ESP32-NAV')) {
-      setESPStatus(true);
-      log('ESP32 connected! ✅');
+    const r = await fetch(`http://${espIP}/ping`, { signal: AbortSignal.timeout(4000) });
+    const t = await r.text();
+    if (t.includes('ESP32')) {
+      espOK = true;
+      setESP(true);
+      lg('ESP32 connected ✅');
     } else {
-      setESPStatus(false);
-      log('Unexpected response from ESP32');
+      setESP(false);
+      lg('Unexpected response: ' + t);
     }
-  } catch (e) {
-    setESPStatus(false);
-    log(`Cannot reach ESP32: ${e.message}`);
+  } catch(e) {
+    setESP(false);
+    lg('Cannot reach ESP32: ' + e.message);
   }
 }
 
-function setESPStatus(ok) {
-  document.getElementById('espDot').className    = `dot ${ok ? 'green' : 'red'}`;
-  document.getElementById('espStatus').textContent = ok ? 'ESP32 connected' : 'ESP32 not connected';
+function setESP(ok) {
+  espOK = ok;
+  document.getElementById('eDot').className = 'dot' + (ok ? ' on' : '');
+  document.getElementById('eTxt').textContent = ok ? 'ESP32 connected' : 'ESP32 not connected';
 }
 
-// Send T:x,D:y to ESP32
-async function sendToESP(turnCode, distMeters) {
-  if (!espIP) return;
-  const body = `T:${turnCode},D:${distMeters}`;
+// Send nav data to ESP32
+async function sendNav(t, d) {
+  if (!espOK || !espIP) return;
   try {
     await fetch(`http://${espIP}/nav`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: body,
+      body: `T:${t},D:${d}`,
       signal: AbortSignal.timeout(2000)
     });
-  } catch (e) {
-    // silently fail — don't spam log during riding
-  }
+  } catch(e) { /* silent fail while riding */ }
 }
 
-
-// ============================================================
-//  GPS
-// ============================================================
+// ── GPS ───────────────────────────────────────────────────
 function startGPS() {
-  if (!navigator.geolocation) {
-    log('Geolocation not supported!');
-    return;
-  }
-  watchId = navigator.geolocation.watchPosition(
-    (pos) => {
+  if (!navigator.geolocation) { lg('GPS not available in this browser'); return; }
+  lg('Starting GPS...');
+  gpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
       userLat = pos.coords.latitude;
       userLon = pos.coords.longitude;
-      document.getElementById('gpsDot').className     = 'dot green';
-      document.getElementById('gpsStatus').textContent = 'GPS active';
-      if (navActive) updateStep();
+      document.getElementById('gDot').className = 'dot on';
+      document.getElementById('gTxt').textContent = 'GPS active';
+      if (navActive) checkAdvance();
     },
-    (err) => {
-      log(`GPS error: ${err.message}`);
-      document.getElementById('gpsDot').className     = 'dot red';
-      document.getElementById('gpsStatus').textContent = 'GPS error';
+    err => {
+      const msg = { 1:'Permission denied', 2:'Signal unavailable', 3:'Timeout' };
+      lg('GPS error ' + err.code + ': ' + (msg[err.code] || err.message));
+      document.getElementById('gDot').className = 'dot';
+      document.getElementById('gTxt').textContent = 'GPS error (' + err.code + ')';
     },
-    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+    { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
   );
-  log('GPS started');
 }
 
 function stopGPS() {
-  if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
+  if (gpsWatchId !== null) {
+    navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
   }
-  document.getElementById('gpsDot').className     = 'dot red';
-  document.getElementById('gpsStatus').textContent = 'GPS off';
+  document.getElementById('gDot').className = 'dot';
+  document.getElementById('gTxt').textContent = 'GPS off';
 }
 
-
-// ============================================================
-//  ROUTING — calls OSRM (free, no API key)
-// ============================================================
-async function geocode(placeName) {
-  // Nominatim — free geocoder from OpenStreetMap
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1`;
-  const res  = await fetch(url, { headers: { 'User-Agent': 'BeelineNav/1.0' } });
+// ── Geocoding (Nominatim) ──────────────────────────────────
+async function geocode(name) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1`;
+  const res  = await fetch(url, { headers: { 'User-Agent': 'CB350Nav/1.0' } });
   const data = await res.json();
-  if (!data.length) throw new Error(`Place not found: ${placeName}`);
-  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), name: data[0].display_name };
+  if (!data.length) throw new Error('Place not found: ' + name);
+  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
 }
 
-async function fetchRoute(fromLat, fromLon, toLat, toLon) {
-  // OSRM public API — free, no key needed
-  const url = `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?steps=true&overview=false`;
+// ── Routing (OSRM) ─────────────────────────────────────────
+async function fetchRoute(fLat, fLon, tLat, tLon) {
+  const url  = `https://router.project-osrm.org/route/v1/driving/${fLon},${fLat};${tLon},${tLat}?steps=true&overview=false`;
   const res  = await fetch(url);
   const data = await res.json();
-
-  if (data.code !== 'Ok') throw new Error('OSRM routing failed');
-
-  // Extract steps from first route, first leg
-  const steps = [];
+  if (data.code !== 'Ok') throw new Error('OSRM failed: ' + data.code);
+  const out = [];
   for (const leg of data.routes[0].legs) {
-    for (const step of leg.steps) {
-      const maneuver  = step.maneuver;
-      const modifier  = maneuver.modifier || 'straight';
-      const type      = maneuver.type;
-
-      // Map OSRM type/modifier to our T code
-      let turnCode = 0;
-      if (type === 'arrive') {
-        turnCode = 4;
-      } else {
-        turnCode = TURN_MAP[modifier] ?? 0;
-      }
-
-      steps.push({
-        turnCode:    turnCode,
-        distance:    Math.round(step.distance),   // meters
-        instruction: step.name || '',
-        lat:         maneuver.location[1],
-        lon:         maneuver.location[0],
+    for (const s of leg.steps) {
+      const m   = s.maneuver;
+      const mod = m.modifier || 'straight';
+      out.push({
+        tc:   m.type === 'arrive' ? 4 : (TURN[mod] ?? 0),
+        dist: Math.round(s.distance),
+        name: s.name || '',
+        lat:  m.location[1],
+        lon:  m.location[0],
       });
     }
   }
-  return steps;
+  return out;
 }
 
-
-// ============================================================
-//  NAVIGATION LOGIC
-// ============================================================
-async function startNavigation() {
+// ── Navigation ─────────────────────────────────────────────
+async function startNav() {
   const dest = document.getElementById('destInput').value.trim();
-  if (!dest) { log('Enter a destination first'); return; }
-  if (!userLat) { log('Waiting for GPS...'); startGPS(); return; }
+  if (!dest) { lg('Enter a destination'); return; }
 
-  log(`Searching for: ${dest}`);
-  document.getElementById('instrDisplay').textContent = 'Fetching route...';
+  if (!userLat) {
+    lg('Waiting for GPS fix...');
+    document.getElementById('instr').textContent = 'Waiting for GPS...';
+    const wait = setInterval(() => {
+      if (userLat) { clearInterval(wait); startNav(); }
+    }, 1000);
+    return;
+  }
+
+  lg('Finding: ' + dest);
+  document.getElementById('instr').textContent = 'Fetching route...';
 
   try {
-    // 1. Geocode destination
-    const destCoords = await geocode(dest);
-    log(`Destination: ${destCoords.name.substring(0, 40)}...`);
+    const dst   = await geocode(dest);
+    steps       = await fetchRoute(userLat, userLon, dst.lat, dst.lon);
+    stepIdx     = 0;
+    navActive   = true;
 
-    // 2. Fetch full route from OSRM
-    routeSteps  = await fetchRoute(userLat, userLon, destCoords.lat, destCoords.lon);
-    currentStep = 0;
-    log(`Route fetched! ${routeSteps.length} steps total`);
-
-    // 3. Start nav
-    navActive = true;
-    document.getElementById('routeBtn').classList.add('hidden');
+    lg('Route ready — ' + steps.length + ' steps');
+    document.getElementById('startBtn').classList.add('hidden');
     document.getElementById('stopBtn').classList.remove('hidden');
 
-    // 4. Keep screen awake
-    try {
-      wakeLock = await navigator.wakeLock.request('screen');
-      log('Screen wake lock acquired');
-    } catch (e) {
-      log('Wake lock not available (keep screen on manually)');
-    }
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
 
-    // 5. Update display immediately
     updateDisplay();
 
-    // 6. Send to ESP32 every 1 second
-    sendInterval = setInterval(() => {
-      if (routeSteps.length && currentStep < routeSteps.length) {
-        const step = routeSteps[currentStep];
-        sendToESP(step.turnCode, step.distance);
+    // Send to ESP32 every second
+    sendTimer = setInterval(() => {
+      if (steps.length && stepIdx < steps.length) {
+        const s = steps[stepIdx];
+        sendNav(s.tc, s.dist);
       }
     }, 1000);
 
-    log('Navigation started! ✅');
+    lg('Navigation started ✅');
 
-  } catch (e) {
-    log(`Error: ${e.message}`);
-    document.getElementById('instrDisplay').textContent = `Error: ${e.message}`;
+  } catch(e) {
+    lg('Error: ' + e.message);
+    document.getElementById('instr').textContent = 'Error: ' + e.message;
   }
 }
 
-function stopNavigation() {
+function stopNav() {
   navActive = false;
-  if (sendInterval) { clearInterval(sendInterval); sendInterval = null; }
-  if (wakeLock)     { wakeLock.release(); wakeLock = null; }
+  if (sendTimer) { clearInterval(sendTimer); sendTimer = null; }
+  if (wakeLock)  { wakeLock.release(); wakeLock = null; }
   stopGPS();
 
-  document.getElementById('routeBtn').classList.remove('hidden');
+  document.getElementById('startBtn').classList.remove('hidden');
   document.getElementById('stopBtn').classList.add('hidden');
-  document.getElementById('arrowDisplay').textContent  = '↑';
-  document.getElementById('distDisplay').textContent   = '--';
-  document.getElementById('instrDisplay').textContent  = 'Navigation stopped';
-  document.getElementById('stepInfo').textContent      = 'Step 0 of 0';
+  document.getElementById('arrow').textContent = '↑';
+  document.getElementById('dist').textContent  = '--';
+  document.getElementById('instr').textContent = 'Navigation stopped';
+  document.getElementById('stepcount').textContent = 'Step 0 of 0';
 
-  sendToESP(0, 0);  // clear ESP32 display
-  log('Navigation stopped');
+  sendNav(0, 0);
+  lg('Navigation stopped');
 }
 
-// Called every GPS update — checks if we've passed the current waypoint
-function updateStep() {
-  if (!navActive || !routeSteps.length) return;
-  if (currentStep >= routeSteps.length) return;
-
-  const step = routeSteps[currentStep];
-
-  // Distance from current GPS to next waypoint
-  const dist = haversine(userLat, userLon, step.lat, step.lon);
-
-  // Update the step's distance with live distance to waypoint
-  routeSteps[currentStep].distance = Math.round(dist);
-
-  // If within 30 metres of waypoint → advance to next step
-  if (dist < 30 && currentStep < routeSteps.length - 1) {
-    currentStep++;
-    log(`Advanced to step ${currentStep + 1} of ${routeSteps.length}`);
+// Check if we've reached the next waypoint
+function checkAdvance() {
+  if (!navActive || !steps.length || stepIdx >= steps.length) return;
+  const s    = steps[stepIdx];
+  const d    = haversine(userLat, userLon, s.lat, s.lon);
+  steps[stepIdx].dist = Math.round(d);
+  if (d < 30 && stepIdx < steps.length - 1) {
+    stepIdx++;
+    lg('Step ' + (stepIdx + 1) + ' / ' + steps.length);
   }
-
   updateDisplay();
 }
 
 function updateDisplay() {
-  if (!routeSteps.length) return;
-  const step = routeSteps[currentStep];
-
-  document.getElementById('arrowDisplay').textContent = ARROW_MAP[step.turnCode] || '↑';
-
-  const dist = step.distance;
-  if (dist >= 1000) {
-    document.getElementById('distDisplay').textContent = (dist / 1000).toFixed(1) + ' km';
-  } else {
-    document.getElementById('distDisplay').textContent = dist + ' m';
-  }
-
-  document.getElementById('instrDisplay').textContent = step.instruction || turnLabel(step.turnCode);
-  document.getElementById('stepInfo').textContent     = `Step ${currentStep + 1} of ${routeSteps.length}`;
+  if (!steps.length) return;
+  const s = steps[stepIdx];
+  document.getElementById('arrow').textContent    = ARROWS[s.tc] || '↑';
+  document.getElementById('dist').textContent     = s.dist >= 1000 ? (s.dist/1000).toFixed(1)+' km' : s.dist+' m';
+  document.getElementById('instr').textContent    = s.name || ['Go straight','Turn left','Turn right','U-turn','You arrived!'][s.tc] || 'Continue';
+  document.getElementById('stepcount').textContent = 'Step ' + (stepIdx+1) + ' of ' + steps.length;
 }
 
-function turnLabel(code) {
-  return ['Go straight','Turn left','Turn right','U-turn','You arrived!'][code] || 'Continue';
-}
-
-// Distance between two GPS coords in metres (Haversine formula)
 function haversine(lat1, lon1, lat2, lon2) {
-  const R    = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a    = Math.sin(dLat/2) * Math.sin(dLat/2) +
-               Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-               Math.sin(dLon/2) * Math.sin(dLon/2);
+  const R = 6371000;
+  const dL = (lat2-lat1) * Math.PI/180;
+  const dO = (lon2-lon1) * Math.PI/180;
+  const a  = Math.sin(dL/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dO/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-
-// ============================================================
-//  AUTO-START GPS on page load
-// ============================================================
+// ── Init ───────────────────────────────────────────────────
 window.addEventListener('load', () => {
   startGPS();
-  log('App loaded. GPS starting...');
+  lg('App loaded. Enter ESP32 IP and tap Connect.');
 });
 </script>
 </body>
