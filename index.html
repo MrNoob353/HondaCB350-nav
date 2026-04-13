@@ -3,25 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CB350 WiFi Navigation</title>
+    <title>CB350 WiFi Dash</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; }
-        h1 { color: #ffcc00; font-size: 24px; margin-bottom: 20px; }
+        h1 { color: #ffcc00; font-size: 24px; }
         .card { background: #111; border: 1px solid #333; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-        
-        input { 
-            width: 90%; padding: 15px; background: #222; border: 1px solid #444; 
-            color: #fff; border-radius: 10px; font-size: 16px; margin: 10px 0;
-        }
-        
-        .btn { 
-            width: 100%; padding: 20px; font-size: 18px; font-weight: bold; 
-            border-radius: 15px; border: none; margin: 10px 0; cursor: pointer;
-        }
-        .btn-start { background: #34C759; color: white; }
-        
-        #status { color: #00FF00; font-family: monospace; font-size: 14px; margin-top: 15px; }
-        #nav-display { font-size: 28px; font-weight: bold; color: #ffcc00; margin-top: 10px; }
+        input { width: 90%; padding: 15px; background: #222; border: 1px solid #444; color: #fff; border-radius: 10px; margin: 10px 0; }
+        .btn { width: 100%; padding: 20px; font-size: 18px; font-weight: bold; border-radius: 15px; border: none; background: #34C759; color: white; cursor: pointer; }
+        #status { color: #00FF00; font-family: monospace; margin-top: 15px; }
+        #nav-display { font-size: 32px; font-weight: bold; color: #ffcc00; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -29,13 +19,13 @@
     <h1>CB350 WiFi Dash</h1>
 
     <div class="card">
-        <input type="text" id="destInput" placeholder="Paste Google Maps Coords">
-        <button class="btn btn-start" onclick="startNavigation()">START NAVIGATION</button>
+        <input type="text" id="destInput" placeholder="Paste Coords from Maps">
+        <button class="btn" onclick="startNavigation()">START NAVIGATION</button>
         <div id="status">Ready: Connect to CB350_Nav WiFi</div>
     </div>
 
     <div class="card">
-        <div>NEXT TURN:</div>
+        <div>INSTRUCTION:</div>
         <div id="nav-display">---</div>
     </div>
 
@@ -44,42 +34,42 @@
         const navDisplayEl = document.getElementById('nav-display');
         let lastCommand = "";
 
-        // Function to send data to ESP32 over WiFi
+        // WiFi Send Function
         async function sendToBike(command) {
-            if (command === lastCommand) return; // Don't spam the same command
+            if (command === lastCommand) return; 
             
-            // The ESP32 Access Point IP is 192.168.4.1
+            // Local IP of the ESP32 Access Point
             const url = `http://192.168.4.1/nav?cmd=${command}`;
             
             try {
-                // 'no-cors' is used because the ESP32 won't send CORS headers
-                await fetch(url, { mode: 'no-cors' });
+                // 'no-cors' allows us to send data even if the ESP32 doesn't send headers
+                await fetch(url, { mode: 'no-cors', cache: 'no-cache' });
                 lastCommand = command;
-                console.log("Sent to bike: " + command);
+                console.log("Sent: " + command);
             } catch (e) {
-                console.log("WiFi Send Failed. Check connection to CB350_Nav");
+                statusEl.innerText = "WiFi Lost. Reconnect to CB350_Nav";
             }
         }
 
         function startNavigation() {
             const rawInput = document.getElementById('destInput').value;
-            if (!rawInput) { alert("Please paste coordinates!"); return; }
+            if (!rawInput) return;
 
-            statusEl.innerText = "Status: GPS Tracking Active";
+            statusEl.innerText = "GPS Tracking Active...";
 
             navigator.geolocation.watchPosition(async (position) => {
                 const myLat = position.coords.latitude;
                 const myLng = position.coords.longitude;
 
-                // 1. Parse Destination
+                // Parse input
                 let parts = rawInput.replace(/\s/g, '').split(',');
                 let destLat = parseFloat(parts[0]);
                 let destLng = parseFloat(parts[1]);
 
-                // 2. Fix Lng/Lat order for OSRM if flipped
+                // Ensure Lng comes first for OSRM URL
                 if (destLat > destLng) { [destLat, destLng] = [destLng, destLat]; }
 
-                // 3. Fetch Navigation from OSRM
+                // Fetch route from OSRM
                 const url = `https://router.project-osrm.org/route/v1/driving/${myLng},${myLat};${destLng},${destLat}?steps=true`;
                 
                 try {
@@ -94,10 +84,10 @@
                         sendToBike(instruction);
                     }
                 } catch (err) {
-                    statusEl.innerText = "Status: OSRM Error";
+                    statusEl.innerText = "OSRM Routing Error";
                 }
             }, 
-            (err) => { statusEl.innerText = "Status: GPS Error " + err.message; }, 
+            (err) => { statusEl.innerText = "GPS Error: Check Bluefy Settings"; }, 
             { enableHighAccuracy: true });
         }
     </script>
