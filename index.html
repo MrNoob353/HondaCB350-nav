@@ -232,8 +232,7 @@ async function sendNav(t, d) {
       body: `T:${t},D:${d}`,
       signal: AbortSignal.timeout(2000)
     });
-  } catch(e) { /* silent fail while riding */ }
-}
+  } catch(e) { lg('Send error: ' + e.message); }
 
 // ── GPS ───────────────────────────────────────────────────
 function startGPS() {
